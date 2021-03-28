@@ -23,21 +23,23 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(RenderGlobal.class)
 public class MixinRenderGlobal {
 
-    @Inject(method = "drawSelectionBox", at = @At("HEAD"), cancellable = true)
-    public void drawSelectionBox(EntityPlayer player, RayTraceResult movingObjectPositionIn, int execute, float partialTicks, CallbackInfo callbackInfo) {
-        if (ModuleManager.isModuleEnabled(BlockHighlight.class)) {
-            callbackInfo.cancel();
-        }
-    }
+	@Inject(method = "drawSelectionBox", at = @At("HEAD"), cancellable = true)
+	public void drawSelectionBox(EntityPlayer player, RayTraceResult movingObjectPositionIn,
+		int execute, float partialTicks, CallbackInfo callbackInfo) {
+		if (ModuleManager.isModuleEnabled(BlockHighlight.class)) {
+			callbackInfo.cancel();
+		}
+	}
 
-    @Inject(method = "drawBlockDamageTexture", at = @At("HEAD"), cancellable = true)
-    public void drawBlockDamageTexture(Tessellator tessellatorIn, BufferBuilder bufferBuilderIn, Entity entityIn, float partialTicks, CallbackInfo callbackInfo) {
-        DrawBlockDamageEvent drawBlockDamageEvent = new DrawBlockDamageEvent();
+	@Inject(method = "drawBlockDamageTexture", at = @At("HEAD"), cancellable = true)
+	public void drawBlockDamageTexture(Tessellator tessellatorIn, BufferBuilder bufferBuilderIn,
+		Entity entityIn, float partialTicks, CallbackInfo callbackInfo) {
+		DrawBlockDamageEvent drawBlockDamageEvent = new DrawBlockDamageEvent();
 
-        GameSense.EVENT_BUS.post(drawBlockDamageEvent);
+		GameSense.EVENT_BUS.post(drawBlockDamageEvent);
 
-        if (drawBlockDamageEvent.isCancelled()) {
-            callbackInfo.cancel();
-        }
-    }
+		if (drawBlockDamageEvent.isCancelled()) {
+			callbackInfo.cancel();
+		}
+	}
 }

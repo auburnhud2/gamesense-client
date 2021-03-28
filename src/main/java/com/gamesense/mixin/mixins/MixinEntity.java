@@ -11,13 +11,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Entity.class)
 public class MixinEntity {
 
-    @Inject(method = "applyEntityCollision", at = @At("HEAD"), cancellable = true)
-    public void velocity(Entity entityIn, CallbackInfo ci) {
-        EntityCollisionEvent event = new EntityCollisionEvent();
-        GameSense.EVENT_BUS.post(event);
+	@Inject(method = "applyEntityCollision", at = @At("HEAD"), cancellable = true)
+	public void velocity(Entity entityIn, CallbackInfo ci) {
+		EntityCollisionEvent event = new EntityCollisionEvent();
+		GameSense.EVENT_BUS.post(event);
 
-        if (event.isCancelled()) {
-            ci.cancel();
-        }
-    }
+		if (event.isCancelled()) {
+			ci.cancel();
+		}
+	}
 }

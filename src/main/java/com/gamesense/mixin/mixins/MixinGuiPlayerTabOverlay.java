@@ -14,22 +14,24 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(GuiPlayerTabOverlay.class)
 public class MixinGuiPlayerTabOverlay {
 
-    @Inject(method = "getPlayerName", at = @At("HEAD"), cancellable = true)
-    public void getPlayerNameHead(NetworkPlayerInfo networkPlayerInfoIn, CallbackInfoReturnable<String> callbackInfoReturnable) {
-        callbackInfoReturnable.setReturnValue(getPlayerNameGS(networkPlayerInfoIn));
-    }
+	@Inject(method = "getPlayerName", at = @At("HEAD"), cancellable = true)
+	public void getPlayerNameHead(NetworkPlayerInfo networkPlayerInfoIn,
+		CallbackInfoReturnable<String> callbackInfoReturnable) {
+		callbackInfoReturnable.setReturnValue(getPlayerNameGS(networkPlayerInfoIn));
+	}
 
-    private String getPlayerNameGS(NetworkPlayerInfo networkPlayerInfoIn) {
-        String displayName = networkPlayerInfoIn.getDisplayName() != null ?
-                networkPlayerInfoIn.getDisplayName().getFormattedText() :
-                ScorePlayerTeam.formatPlayerName(networkPlayerInfoIn.getPlayerTeam(), networkPlayerInfoIn.getGameProfile().getName());
+	private String getPlayerNameGS(NetworkPlayerInfo networkPlayerInfoIn) {
+		String displayName = networkPlayerInfoIn.getDisplayName() != null ?
+			networkPlayerInfoIn.getDisplayName().getFormattedText() :
+			ScorePlayerTeam.formatPlayerName(networkPlayerInfoIn.getPlayerTeam(),
+				networkPlayerInfoIn.getGameProfile().getName());
 
-        if (SocialManager.isFriend(displayName)) {
-            return ModuleManager.getModule(ColorMain.class).getFriendColor() + displayName;
-        } else if (SocialManager.isEnemy(displayName)) {
-            return ModuleManager.getModule(ColorMain.class).getEnemyColor() + displayName;
-        } else {
-            return displayName;
-        }
-    }
+		if (SocialManager.isFriend(displayName)) {
+			return ModuleManager.getModule(ColorMain.class).getFriendColor() + displayName;
+		} else if (SocialManager.isEnemy(displayName)) {
+			return ModuleManager.getModule(ColorMain.class).getEnemyColor() + displayName;
+		} else {
+			return displayName;
+		}
+	}
 }

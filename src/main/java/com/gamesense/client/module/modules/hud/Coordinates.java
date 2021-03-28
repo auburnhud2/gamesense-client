@@ -8,110 +8,114 @@ import com.gamesense.client.module.Module;
 import com.lukflug.panelstudio.hud.HUDList;
 import com.lukflug.panelstudio.hud.ListComponent;
 import com.lukflug.panelstudio.theme.Theme;
+import java.awt.Color;
 import me.zero.alpine.listener.EventHandler;
 import me.zero.alpine.listener.Listener;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.Entity;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
-import java.awt.*;
-
 @Module.Declaration(name = "Coordinates", category = Category.HUD)
 @HUDModule.Declaration(posX = 0, posZ = 0)
 public class Coordinates extends HUDModule {
 
-    BooleanSetting showNetherOverworld = registerBoolean("Show Nether", true);
-    BooleanSetting thousandsSeparator = registerBoolean("Thousands Separator", true);
-    IntegerSetting decimalPlaces = registerInteger("Decimal Places", 1, 0, 5);
+	private final String[] coordinateString = {"", ""};
+	BooleanSetting showNetherOverworld = registerBoolean("Show Nether", true);
+	BooleanSetting thousandsSeparator = registerBoolean("Thousands Separator", true);
+	IntegerSetting decimalPlaces = registerInteger("Decimal Places", 1, 0, 5);
+	@SuppressWarnings("unused")
+	@EventHandler
+	private final Listener<TickEvent.ClientTickEvent> listener = new Listener<>(event -> {
+		if (event.phase != TickEvent.Phase.END) {
+			return;
+		}
 
-    private final String[] coordinateString = {"", ""};
+		Entity viewEntity = mc.getRenderViewEntity();
+		EntityPlayerSP player = mc.player;
 
-    @SuppressWarnings("unused")
-    @EventHandler
-    private final Listener<TickEvent.ClientTickEvent> listener = new Listener<>(event -> {
-        if (event.phase != TickEvent.Phase.END) return;
+		if (viewEntity == null) {
+			if (player != null) {
+				viewEntity = player;
+			} else {
+				return;
+			}
+		}
 
-        Entity viewEntity = mc.getRenderViewEntity();
-        EntityPlayerSP player = mc.player;
+		int dimension = viewEntity.dimension;
 
-        if (viewEntity == null) {
-            if (player != null) {
-                viewEntity = player;
-            } else {
-                return;
-            }
-        }
+		coordinateString[0] =
+			"XYZ " + getFormattedCoords(viewEntity.posX, viewEntity.posY, viewEntity.posZ);
 
-        int dimension = viewEntity.dimension;
+		switch (dimension) {
+			case -1: // Nether
+				coordinateString[1] = "Overworld "
+					+ getFormattedCoords(viewEntity.posX * 8.0, viewEntity.posY,
+					viewEntity.posZ * 8.0);
+				break;
+			case 0: // Overworld
+				coordinateString[1] = "Nether "
+					+ getFormattedCoords(viewEntity.posX / 8.0, viewEntity.posY,
+					viewEntity.posZ / 8.0);
+				break;
+			default:
+				break;
+		}
+	});
 
-        coordinateString[0] = "XYZ " + getFormattedCoords(viewEntity.posX, viewEntity.posY, viewEntity.posZ);
+	private String getFormattedCoords(double x, double y, double z) {
+		return roundOrInt(x) + ", " + roundOrInt(y) + ", " + roundOrInt(z);
+	}
 
-        switch (dimension) {
-            case -1: // Nether
-                coordinateString[1] = "Overworld "
-                        + getFormattedCoords(viewEntity.posX * 8.0, viewEntity.posY, viewEntity.posZ * 8.0);
-                break;
-            case 0: // Overworld
-                coordinateString[1] = "Nether "
-                        + getFormattedCoords(viewEntity.posX / 8.0, viewEntity.posY, viewEntity.posZ / 8.0);
-                break;
-            default:
-                break;
-        }
-    });
+	private String roundOrInt(double input) {
+		String separatorFormat;
 
-    private String getFormattedCoords(double x, double y, double z) {
-        return roundOrInt(x) + ", " + roundOrInt(y) + ", " + roundOrInt(z);
-    }
+		if (thousandsSeparator.getValue()) {
+			separatorFormat = ",";
+		} else {
+			separatorFormat = "";
+		}
 
-    private String roundOrInt(double input) {
-        String separatorFormat;
+		return String.format('%' + separatorFormat + '.' + decimalPlaces.getValue() + 'f', input);
+	}
 
-        if (thousandsSeparator.getValue()) {
-            separatorFormat = ",";
-        } else {
-            separatorFormat = "";
-        }
+	@Override
+	public void populate(Theme theme) {
+		component = new ListComponent(getName(), theme.getPanelRenderer(), position,
+			new CoordinateLabel());
+	}
 
-        return String.format('%' + separatorFormat + '.' + decimalPlaces.getValue() + 'f', input);
-    }
+	private class CoordinateLabel implements HUDList {
 
-    @Override
-    public void populate(Theme theme) {
-        component = new ListComponent(getName(), theme.getPanelRenderer(), position, new CoordinateLabel());
-    }
+		@Override
+		public int getSize() {
+			EntityPlayerSP player = mc.player;
+			int dimension = player != null ? player.dimension : 1;
 
-    private class CoordinateLabel implements HUDList {
-        @Override
-        public int getSize() {
-            EntityPlayerSP player = mc.player;
-            int dimension = player != null ? player.dimension : 1;
+			if (showNetherOverworld.getValue() && (dimension == -1 || dimension == 0)) {
+				return 2;
+			} else {
+				return 1;
+			}
+		}
 
-            if (showNetherOverworld.getValue() && (dimension == -1 || dimension == 0)) {
-                return 2;
-            } else {
-                return 1;
-            }
-        }
+		@Override
+		public String getItem(int index) {
+			return coordinateString[index];
+		}
 
-        @Override
-        public String getItem(int index) {
-            return coordinateString[index];
-        }
+		@Override
+		public Color getItemColor(int index) {
+			return new Color(255, 255, 255);
+		}
 
-        @Override
-        public Color getItemColor(int index) {
-            return new Color(255, 255, 255);
-        }
+		@Override
+		public boolean sortUp() {
+			return false;
+		}
 
-        @Override
-        public boolean sortUp() {
-            return false;
-        }
-
-        @Override
-        public boolean sortRight() {
-            return false;
-        }
-    }
+		@Override
+		public boolean sortRight() {
+			return false;
+		}
+	}
 }

@@ -9,130 +9,134 @@ import com.gamesense.client.module.Module;
 import com.lukflug.panelstudio.hud.HUDList;
 import com.lukflug.panelstudio.hud.ListComponent;
 import com.lukflug.panelstudio.theme.Theme;
+import java.awt.Color;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Collection;
 import me.zero.alpine.listener.EventHandler;
 import me.zero.alpine.listener.Listener;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
-import java.awt.*;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Collection;
-
 @Module.Declaration(name = "Speedometer", category = Category.HUD)
 @HUDModule.Declaration(posX = 0, posZ = 70)
 public class Speedometer extends HUDModule {
 
-    private static final String MPS = "m/s";
-    private static final String KMH = "km/h";
-    private static final String MPH = "mph";
+	private static final String MPS = "m/s";
+	private static final String KMH = "km/h";
+	private static final String MPH = "mph";
+	private final ArrayDeque<Double> speedDeque = new ArrayDeque<>();
+	ModeSetting speedUnit = registerMode("Unit", Arrays.asList(MPS, KMH, MPH), KMH);
+	BooleanSetting averageSpeed = registerBoolean("Average Speed", true);
+	IntegerSetting averageSpeedTicks = registerInteger("Average Time", 20, 5, 100);
+	private String speedString = "";
+	@SuppressWarnings("unused")
+	@EventHandler
+	private final Listener<TickEvent.ClientTickEvent> listener = new Listener<>(event -> {
+		if (event.phase != TickEvent.Phase.END) {
+			return;
+		}
 
-    ModeSetting speedUnit = registerMode("Unit", Arrays.asList(MPS, KMH, MPH), KMH);
-    BooleanSetting averageSpeed = registerBoolean("Average Speed", true);
-    IntegerSetting averageSpeedTicks = registerInteger("Average Time", 20, 5, 100);
+		EntityPlayerSP player = mc.player;
+		if (player == null) {
+			return;
+		}
 
-    private final ArrayDeque<Double> speedDeque = new ArrayDeque<>();
-    private String speedString = "";
+		String unit = speedUnit.getValue();
+		double speed = calcSpeed(player, unit);
+		double displaySpeed = speed;
 
-    protected void onDisable() {
-        speedDeque.clear();
-        speedString = "";
-    }
+		if (averageSpeed.getValue()) {
+			if (speed > 0.0 || player.ticksExisted % 4 == 0) {
+				speedDeque.add(speed); // Only adding it every 4 ticks if speed is 0
+			} else {
+				speedDeque.pollFirst();
+			}
 
-    @SuppressWarnings("unused")
-    @EventHandler
-    private final Listener<TickEvent.ClientTickEvent> listener = new Listener<>(event -> {
-        if (event.phase != TickEvent.Phase.END) return;
+			while (!speedDeque.isEmpty() && speedDeque.size() > averageSpeedTicks.getValue()) {
+				speedDeque.poll();
+			}
 
-        EntityPlayerSP player = mc.player;
-        if (player == null) return;
+			displaySpeed = average(speedDeque);
+		}
 
-        String unit = speedUnit.getValue();
-        double speed = calcSpeed(player, unit);
-        double displaySpeed = speed;
+		speedString = String.format("%.2f", displaySpeed) + ' ' + unit;
+	});
 
-        if (averageSpeed.getValue()) {
-            if (speed > 0.0 || player.ticksExisted % 4 == 0) {
-                speedDeque.add(speed); // Only adding it every 4 ticks if speed is 0
-            } else {
-                speedDeque.pollFirst();
-            }
+	protected void onDisable() {
+		speedDeque.clear();
+		speedString = "";
+	}
 
-            while (!speedDeque.isEmpty() && speedDeque.size() > averageSpeedTicks.getValue()) {
-                speedDeque.poll();
-            }
+	private double calcSpeed(EntityPlayerSP player, String unit) {
+		double tps = 1000.0 / mc.timer.tickLength;
+		double xDiff = player.posX - player.prevPosX;
+		double zDiff = player.posZ - player.prevPosZ;
 
-            displaySpeed = average(speedDeque);
-        }
+		double speed = Math.hypot(xDiff, zDiff) * tps;
 
-        speedString = String.format("%.2f", displaySpeed) + ' ' + unit;
-    });
+		// Fast memory address comparison
+		switch (unit) {
+			case KMH:
+				speed *= 3.6;
+				break;
+			case MPH:
+				speed *= 2.237;
+				break;
+			default:
+				break;
+		}
 
-    private double calcSpeed(EntityPlayerSP player, String unit) {
-        double tps = 1000.0 / mc.timer.tickLength;
-        double xDiff = player.posX - player.prevPosX;
-        double zDiff = player.posZ - player.prevPosZ;
+		return speed;
+	}
 
-        double speed = Math.hypot(xDiff, zDiff) * tps;
+	private double average(Collection<Double> collection) {
+		if (collection.isEmpty()) {
+			return 0.0;
+		}
 
-        // Fast memory address comparison
-        switch (unit) {
-            case KMH:
-                speed *= 3.6;
-                break;
-            case MPH:
-                speed *= 2.237;
-                break;
-            default:
-                break;
-        }
+		double sum = 0.0;
+		int size = 0;
 
-        return speed;
-    }
+		for (double element : collection) {
+			sum += element;
+			size++;
+		}
 
-    private double average(Collection<Double> collection) {
-        if (collection.isEmpty()) return 0.0;
+		return sum / size;
+	}
 
-        double sum = 0.0;
-        int size = 0;
+	@Override
+	public void populate(Theme theme) {
+		component = new ListComponent(getName(), theme.getPanelRenderer(), position,
+			new SpeedLabel());
+	}
 
-        for (double element : collection) {
-            sum += element;
-            size++;
-        }
+	private class SpeedLabel implements HUDList {
 
-        return sum / size;
-    }
+		@Override
+		public int getSize() {
+			return 1;
+		}
 
-    @Override
-    public void populate(Theme theme) {
-        component = new ListComponent(getName(), theme.getPanelRenderer(), position, new SpeedLabel());
-    }
+		@Override
+		public String getItem(int index) {
+			return speedString;
+		}
 
-    private class SpeedLabel implements HUDList {
-        @Override
-        public int getSize() {
-            return 1;
-        }
+		@Override
+		public Color getItemColor(int index) {
+			return new Color(255, 255, 255);
+		}
 
-        @Override
-        public String getItem(int index) {
-            return speedString;
-        }
+		@Override
+		public boolean sortUp() {
+			return false;
+		}
 
-        @Override
-        public Color getItemColor(int index) {
-            return new Color(255, 255, 255);
-        }
-
-        @Override
-        public boolean sortUp() {
-            return false;
-        }
-
-        @Override
-        public boolean sortRight() {
-            return false;
-        }
-    }
+		@Override
+		public boolean sortRight() {
+			return false;
+		}
+	}
 }

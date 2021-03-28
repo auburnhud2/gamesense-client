@@ -21,45 +21,53 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(RenderManager.class)
 public class MixinRenderManager {
 
-    @Inject(method = "renderEntity", at = @At("HEAD"), cancellable = true)
-    public void renderEntityHead(Entity entityIn, double x, double y, double z, float yaw, float partialTicks, boolean p_188391_10_, CallbackInfo callbackInfo) {
-        RenderEntityEvent.Head renderEntityHeadEvent = new RenderEntityEvent.Head(entityIn, RenderEntityEvent.Type.TEXTURE);
+	@Inject(method = "renderEntity", at = @At("HEAD"), cancellable = true)
+	public void renderEntityHead(Entity entityIn, double x, double y, double z, float yaw,
+		float partialTicks, boolean p_188391_10_, CallbackInfo callbackInfo) {
+		RenderEntityEvent.Head renderEntityHeadEvent = new RenderEntityEvent.Head(entityIn,
+			RenderEntityEvent.Type.TEXTURE);
 
-        GameSense.EVENT_BUS.post(renderEntityHeadEvent);
+		GameSense.EVENT_BUS.post(renderEntityHeadEvent);
 
-        if (entityIn instanceof EntityEnderPearl || entityIn instanceof EntityXPOrb || entityIn instanceof EntityExpBottle || entityIn instanceof EntityEnderCrystal) {
-            RenderEntityEvent.Head renderEntityEvent = new RenderEntityEvent.Head(entityIn, RenderEntityEvent.Type.COLOR);
+		if (entityIn instanceof EntityEnderPearl || entityIn instanceof EntityXPOrb
+			|| entityIn instanceof EntityExpBottle || entityIn instanceof EntityEnderCrystal) {
+			RenderEntityEvent.Head renderEntityEvent = new RenderEntityEvent.Head(entityIn,
+				RenderEntityEvent.Type.COLOR);
 
-            GameSense.EVENT_BUS.post(renderEntityEvent);
+			GameSense.EVENT_BUS.post(renderEntityEvent);
 
-            if (renderEntityEvent.isCancelled()) {
-                callbackInfo.cancel();
-            }
-        }
+			if (renderEntityEvent.isCancelled()) {
+				callbackInfo.cancel();
+			}
+		}
 
-        if (renderEntityHeadEvent.isCancelled()) {
-            callbackInfo.cancel();
-        }
-    }
+		if (renderEntityHeadEvent.isCancelled()) {
+			callbackInfo.cancel();
+		}
+	}
 
-    @Inject(method = "renderEntity", at = @At("RETURN"), cancellable = true)
-    public void renderEntityReturn(Entity entityIn, double x, double y, double z, float yaw, float partialTicks, boolean p_188391_10_, CallbackInfo callbackInfo) {
-        RenderEntityEvent.Return renderEntityReturnEvent = new RenderEntityEvent.Return(entityIn, RenderEntityEvent.Type.TEXTURE);
+	@Inject(method = "renderEntity", at = @At("RETURN"), cancellable = true)
+	public void renderEntityReturn(Entity entityIn, double x, double y, double z, float yaw,
+		float partialTicks, boolean p_188391_10_, CallbackInfo callbackInfo) {
+		RenderEntityEvent.Return renderEntityReturnEvent = new RenderEntityEvent.Return(entityIn,
+			RenderEntityEvent.Type.TEXTURE);
 
-        GameSense.EVENT_BUS.post(renderEntityReturnEvent);
+		GameSense.EVENT_BUS.post(renderEntityReturnEvent);
 
-        if (entityIn instanceof EntityEnderPearl || entityIn instanceof EntityXPOrb || entityIn instanceof EntityExpBottle || entityIn instanceof EntityEnderCrystal) {
-            RenderEntityEvent.Return renderEntityEvent = new RenderEntityEvent.Return(entityIn, RenderEntityEvent.Type.COLOR);
+		if (entityIn instanceof EntityEnderPearl || entityIn instanceof EntityXPOrb
+			|| entityIn instanceof EntityExpBottle || entityIn instanceof EntityEnderCrystal) {
+			RenderEntityEvent.Return renderEntityEvent = new RenderEntityEvent.Return(entityIn,
+				RenderEntityEvent.Type.COLOR);
 
-            GameSense.EVENT_BUS.post(renderEntityEvent);
+			GameSense.EVENT_BUS.post(renderEntityEvent);
 
-            if (renderEntityEvent.isCancelled()) {
-                callbackInfo.cancel();
-            }
-        }
+			if (renderEntityEvent.isCancelled()) {
+				callbackInfo.cancel();
+			}
+		}
 
-        if (renderEntityReturnEvent.isCancelled()) {
-            callbackInfo.cancel();
-        }
-    }
+		if (renderEntityReturnEvent.isCancelled()) {
+			callbackInfo.cancel();
+		}
+	}
 }

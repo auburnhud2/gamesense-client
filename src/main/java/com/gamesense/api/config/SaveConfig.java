@@ -2,7 +2,11 @@ package com.gamesense.api.config;
 
 import com.gamesense.api.setting.Setting;
 import com.gamesense.api.setting.SettingsManager;
-import com.gamesense.api.setting.values.*;
+import com.gamesense.api.setting.values.BooleanSetting;
+import com.gamesense.api.setting.values.ColorSetting;
+import com.gamesense.api.setting.values.DoubleSetting;
+import com.gamesense.api.setting.values.IntegerSetting;
+import com.gamesense.api.setting.values.ModeSetting;
 import com.gamesense.api.util.player.social.Enemy;
 import com.gamesense.api.util.player.social.Friend;
 import com.gamesense.api.util.player.social.SocialManager;
@@ -14,8 +18,12 @@ import com.gamesense.client.module.ModuleManager;
 import com.gamesense.client.module.modules.misc.AutoGG;
 import com.gamesense.client.module.modules.misc.AutoReply;
 import com.gamesense.client.module.modules.misc.AutoRespawn;
-import com.google.gson.*;
-
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -31,273 +39,299 @@ import java.nio.file.Paths;
 
 public class SaveConfig {
 
-    public SaveConfig() {
-        try {
-            saveConfig();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+	public static final String fileName = "GameSense/";
+	String moduleName = "Modules/";
+	String mainName = "Main/";
+	String miscName = "Misc/";
+	public SaveConfig() {
+		try {
+			saveConfig();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
-    public static final String fileName = "GameSense/";
-    String moduleName = "Modules/";
-    String mainName = "Main/";
-    String miscName = "Misc/";
+	public void saveConfig() throws IOException {
+		if (!Files.exists(Paths.get(fileName))) {
+			Files.createDirectories(Paths.get(fileName));
+		}
+		if (!Files.exists(Paths.get(fileName + moduleName))) {
+			Files.createDirectories(Paths.get(fileName + moduleName));
+		}
+		if (!Files.exists(Paths.get(fileName + mainName))) {
+			Files.createDirectories(Paths.get(fileName + mainName));
+		}
+		if (!Files.exists(Paths.get(fileName + miscName))) {
+			Files.createDirectories(Paths.get(fileName + miscName));
+		}
+	}
 
-    public void saveConfig() throws IOException {
-        if (!Files.exists(Paths.get(fileName))) {
-            Files.createDirectories(Paths.get(fileName));
-        }
-        if (!Files.exists(Paths.get(fileName + moduleName))) {
-            Files.createDirectories(Paths.get(fileName + moduleName));
-        }
-        if (!Files.exists(Paths.get(fileName + mainName))) {
-            Files.createDirectories(Paths.get(fileName + mainName));
-        }
-        if (!Files.exists(Paths.get(fileName + miscName))) {
-            Files.createDirectories(Paths.get(fileName + miscName));
-        }
-    }
+	public void registerFiles(String location, String name) throws IOException {
+		if (Files.exists(Paths.get(fileName + location + name + ".json"))) {
+			File file = new File(fileName + location + name + ".json");
 
-    public void registerFiles(String location, String name) throws IOException {
-        if (Files.exists(Paths.get(fileName + location + name + ".json"))) {
-            File file = new File(fileName + location + name + ".json");
+			file.delete();
 
-            file.delete();
+		}
+		Files.createFile(Paths.get(fileName + location + name + ".json"));
+	}
 
-        }
-        Files.createFile(Paths.get(fileName + location + name + ".json"));
-    }
+	public void saveModules() {
+		for (Module module : ModuleManager.getModules()) {
+			try {
+				saveModuleDirect(module);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 
-    public void saveModules() {
-        for (Module module : ModuleManager.getModules()) {
-            try {
-                saveModuleDirect(module);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
+	public void saveModuleDirect(Module module) throws IOException {
+		registerFiles(moduleName, module.getName());
 
-    public void saveModuleDirect(Module module) throws IOException {
-        registerFiles(moduleName, module.getName());
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + moduleName + module.getName() + ".json"),
+			StandardCharsets.UTF_8);
+		JsonObject moduleObject = new JsonObject();
+		JsonObject settingObject = new JsonObject();
+		moduleObject.add("Module", new JsonPrimitive(module.getName()));
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + moduleName + module.getName() + ".json"), StandardCharsets.UTF_8);
-        JsonObject moduleObject = new JsonObject();
-        JsonObject settingObject = new JsonObject();
-        moduleObject.add("Module", new JsonPrimitive(module.getName()));
+		for (Setting setting : SettingsManager.getSettingsForModule(module)) {
+			if (setting instanceof BooleanSetting) {
+				settingObject.add(setting.getConfigName(),
+					new JsonPrimitive(((BooleanSetting) setting).getValue()));
+			} else if (setting instanceof IntegerSetting) {
+				settingObject.add(setting.getConfigName(),
+					new JsonPrimitive(((IntegerSetting) setting).getValue()));
+			} else if (setting instanceof DoubleSetting) {
+				settingObject.add(setting.getConfigName(),
+					new JsonPrimitive(((DoubleSetting) setting).getValue()));
+			} else if (setting instanceof ColorSetting) {
+				settingObject.add(setting.getConfigName(),
+					new JsonPrimitive(((ColorSetting) setting).toInteger()));
+			} else if (setting instanceof ModeSetting) {
+				settingObject.add(setting.getConfigName(),
+					new JsonPrimitive(((ModeSetting) setting).getValue()));
+			}
+		}
+		moduleObject.add("Settings", settingObject);
+		String jsonString = gson.toJson(new JsonParser().parse(moduleObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-        for (Setting setting : SettingsManager.getSettingsForModule(module)) {
-            if (setting instanceof BooleanSetting) {
-                settingObject.add(setting.getConfigName(), new JsonPrimitive(((BooleanSetting) setting).getValue()));
-            } else if (setting instanceof IntegerSetting) {
-                settingObject.add(setting.getConfigName(), new JsonPrimitive(((IntegerSetting) setting).getValue()));
-            } else if (setting instanceof DoubleSetting) {
-                settingObject.add(setting.getConfigName(), new JsonPrimitive(((DoubleSetting) setting).getValue()));
-            } else if (setting instanceof ColorSetting) {
-                settingObject.add(setting.getConfigName(), new JsonPrimitive(((ColorSetting) setting).toInteger()));
-            } else if (setting instanceof ModeSetting) {
-                settingObject.add(setting.getConfigName(), new JsonPrimitive(((ModeSetting) setting).getValue()));
-            }
-        }
-        moduleObject.add("Settings", settingObject);
-        String jsonString = gson.toJson(new JsonParser().parse(moduleObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveEnabledModules() throws IOException {
 
-    public void saveEnabledModules() throws IOException {
+		registerFiles(mainName, "Toggle");
 
-        registerFiles(mainName, "Toggle");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + mainName + "Toggle" + ".json"), StandardCharsets.UTF_8);
+		JsonObject moduleObject = new JsonObject();
+		JsonObject enabledObject = new JsonObject();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + mainName + "Toggle" + ".json"), StandardCharsets.UTF_8);
-        JsonObject moduleObject = new JsonObject();
-        JsonObject enabledObject = new JsonObject();
+		for (Module module : ModuleManager.getModules()) {
 
-        for (Module module : ModuleManager.getModules()) {
+			enabledObject.add(module.getName(), new JsonPrimitive(module.isEnabled()));
+		}
+		moduleObject.add("Modules", enabledObject);
+		String jsonString = gson.toJson(new JsonParser().parse(moduleObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-            enabledObject.add(module.getName(), new JsonPrimitive(module.isEnabled()));
-        }
-        moduleObject.add("Modules", enabledObject);
-        String jsonString = gson.toJson(new JsonParser().parse(moduleObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveModuleKeybinds() throws IOException {
 
-    public void saveModuleKeybinds() throws IOException {
+		registerFiles(mainName, "Bind");
 
-        registerFiles(mainName, "Bind");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + mainName + "Bind" + ".json"), StandardCharsets.UTF_8);
+		JsonObject moduleObject = new JsonObject();
+		JsonObject bindObject = new JsonObject();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + mainName + "Bind" + ".json"), StandardCharsets.UTF_8);
-        JsonObject moduleObject = new JsonObject();
-        JsonObject bindObject = new JsonObject();
+		for (Module module : ModuleManager.getModules()) {
 
-        for (Module module : ModuleManager.getModules()) {
+			bindObject.add(module.getName(), new JsonPrimitive(module.getBind()));
+		}
+		moduleObject.add("Modules", bindObject);
+		String jsonString = gson.toJson(new JsonParser().parse(moduleObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-            bindObject.add(module.getName(), new JsonPrimitive(module.getBind()));
-        }
-        moduleObject.add("Modules", bindObject);
-        String jsonString = gson.toJson(new JsonParser().parse(moduleObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveDrawnModules() throws IOException {
 
-    public void saveDrawnModules() throws IOException {
+		registerFiles(mainName, "Drawn");
 
-        registerFiles(mainName, "Drawn");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + mainName + "Drawn" + ".json"), StandardCharsets.UTF_8);
+		JsonObject moduleObject = new JsonObject();
+		JsonObject drawnObject = new JsonObject();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + mainName + "Drawn" + ".json"), StandardCharsets.UTF_8);
-        JsonObject moduleObject = new JsonObject();
-        JsonObject drawnObject = new JsonObject();
+		for (Module module : ModuleManager.getModules()) {
 
-        for (Module module : ModuleManager.getModules()) {
+			drawnObject.add(module.getName(), new JsonPrimitive(module.isDrawn()));
+		}
+		moduleObject.add("Modules", drawnObject);
+		String jsonString = gson.toJson(new JsonParser().parse(moduleObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-            drawnObject.add(module.getName(), new JsonPrimitive(module.isDrawn()));
-        }
-        moduleObject.add("Modules", drawnObject);
-        String jsonString = gson.toJson(new JsonParser().parse(moduleObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveToggleMessagesModules() throws IOException {
 
-    public void saveToggleMessagesModules() throws IOException {
+		registerFiles(mainName, "ToggleMessages");
 
-        registerFiles(mainName, "ToggleMessages");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + mainName + "ToggleMessages" + ".json"),
+			StandardCharsets.UTF_8);
+		JsonObject moduleObject = new JsonObject();
+		JsonObject toggleMessagesObject = new JsonObject();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + mainName + "ToggleMessages" + ".json"), StandardCharsets.UTF_8);
-        JsonObject moduleObject = new JsonObject();
-        JsonObject toggleMessagesObject = new JsonObject();
+		for (Module module : ModuleManager.getModules()) {
 
-        for (Module module : ModuleManager.getModules()) {
+			toggleMessagesObject.add(module.getName(), new JsonPrimitive(module.isToggleMsg()));
+		}
+		moduleObject.add("Modules", toggleMessagesObject);
+		String jsonString = gson.toJson(new JsonParser().parse(moduleObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-            toggleMessagesObject.add(module.getName(), new JsonPrimitive(module.isToggleMsg()));
-        }
-        moduleObject.add("Modules", toggleMessagesObject);
-        String jsonString = gson.toJson(new JsonParser().parse(moduleObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveCommandPrefix() throws IOException {
 
-    public void saveCommandPrefix() throws IOException {
+		registerFiles(mainName, "CommandPrefix");
 
-        registerFiles(mainName, "CommandPrefix");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + mainName + "CommandPrefix" + ".json"),
+			StandardCharsets.UTF_8);
+		JsonObject prefixObject = new JsonObject();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + mainName + "CommandPrefix" + ".json"), StandardCharsets.UTF_8);
-        JsonObject prefixObject = new JsonObject();
+		prefixObject.add("Prefix", new JsonPrimitive(CommandManager.getCommandPrefix()));
+		String jsonString = gson.toJson(new JsonParser().parse(prefixObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-        prefixObject.add("Prefix", new JsonPrimitive(CommandManager.getCommandPrefix()));
-        String jsonString = gson.toJson(new JsonParser().parse(prefixObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveCustomFont() throws IOException {
 
-    public void saveCustomFont() throws IOException {
+		registerFiles(miscName, "CustomFont");
 
-        registerFiles(miscName, "CustomFont");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + miscName + "CustomFont" + ".json"),
+			StandardCharsets.UTF_8);
+		JsonObject fontObject = new JsonObject();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + miscName + "CustomFont" + ".json"), StandardCharsets.UTF_8);
-        JsonObject fontObject = new JsonObject();
+		fontObject
+			.add("Font Name", new JsonPrimitive(GameSense.INSTANCE.cFontRenderer.getFontName()));
+		fontObject
+			.add("Font Size", new JsonPrimitive(GameSense.INSTANCE.cFontRenderer.getFontSize()));
+		String jsonString = gson.toJson(new JsonParser().parse(fontObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-        fontObject.add("Font Name", new JsonPrimitive(GameSense.INSTANCE.cFontRenderer.getFontName()));
-        fontObject.add("Font Size", new JsonPrimitive(GameSense.INSTANCE.cFontRenderer.getFontSize()));
-        String jsonString = gson.toJson(new JsonParser().parse(fontObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveFriendsList() throws IOException {
 
-    public void saveFriendsList() throws IOException {
+		registerFiles(miscName, "Friends");
 
-        registerFiles(miscName, "Friends");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + miscName + "Friends" + ".json"),
+			StandardCharsets.UTF_8);
+		JsonObject mainObject = new JsonObject();
+		JsonArray friendArray = new JsonArray();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + miscName + "Friends" + ".json"), StandardCharsets.UTF_8);
-        JsonObject mainObject = new JsonObject();
-        JsonArray friendArray = new JsonArray();
+		for (Friend friend : SocialManager.getFriends()) {
+			friendArray.add(friend.getName());
+		}
+		mainObject.add("Friends", friendArray);
+		String jsonString = gson.toJson(new JsonParser().parse(mainObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-        for (Friend friend : SocialManager.getFriends()) {
-            friendArray.add(friend.getName());
-        }
-        mainObject.add("Friends", friendArray);
-        String jsonString = gson.toJson(new JsonParser().parse(mainObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveEnemiesList() throws IOException {
 
-    public void saveEnemiesList() throws IOException {
+		registerFiles(miscName, "Enemies");
 
-        registerFiles(miscName, "Enemies");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + miscName + "Enemies" + ".json"),
+			StandardCharsets.UTF_8);
+		JsonObject mainObject = new JsonObject();
+		JsonArray enemyArray = new JsonArray();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + miscName + "Enemies" + ".json"), StandardCharsets.UTF_8);
-        JsonObject mainObject = new JsonObject();
-        JsonArray enemyArray = new JsonArray();
+		for (Enemy enemy : SocialManager.getEnemies()) {
+			enemyArray.add(enemy.getName());
+		}
+		mainObject.add("Enemies", enemyArray);
+		String jsonString = gson.toJson(new JsonParser().parse(mainObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-        for (Enemy enemy : SocialManager.getEnemies()) {
-            enemyArray.add(enemy.getName());
-        }
-        mainObject.add("Enemies", enemyArray);
-        String jsonString = gson.toJson(new JsonParser().parse(mainObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveClickGUIPositions() throws IOException {
+		registerFiles(mainName, "ClickGUI");
+		GameSense.INSTANCE.gameSenseGUI.gui.saveConfig(new GuiConfig(fileName + mainName));
+	}
 
-    public void saveClickGUIPositions() throws IOException {
-        registerFiles(mainName, "ClickGUI");
-        GameSense.INSTANCE.gameSenseGUI.gui.saveConfig(new GuiConfig(fileName + mainName));
-    }
+	public void saveAutoGG() throws IOException {
 
-    public void saveAutoGG() throws IOException {
+		registerFiles(miscName, "AutoGG");
 
-        registerFiles(miscName, "AutoGG");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + miscName + "AutoGG" + ".json"), StandardCharsets.UTF_8);
+		JsonObject mainObject = new JsonObject();
+		JsonArray messageArray = new JsonArray();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + miscName + "AutoGG" + ".json"), StandardCharsets.UTF_8);
-        JsonObject mainObject = new JsonObject();
-        JsonArray messageArray = new JsonArray();
+		for (String autoGG : AutoGG.getAutoGgMessages()) {
+			messageArray.add(autoGG);
+		}
+		mainObject.add("Messages", messageArray);
+		String jsonString = gson.toJson(new JsonParser().parse(mainObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-        for (String autoGG : AutoGG.getAutoGgMessages()) {
-            messageArray.add(autoGG);
-        }
-        mainObject.add("Messages", messageArray);
-        String jsonString = gson.toJson(new JsonParser().parse(mainObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveAutoReply() throws IOException {
 
-    public void saveAutoReply() throws IOException {
+		registerFiles(miscName, "AutoReply");
 
-        registerFiles(miscName, "AutoReply");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + miscName + "AutoReply" + ".json"),
+			StandardCharsets.UTF_8);
+		JsonObject mainObject = new JsonObject();
+		JsonObject messageObject = new JsonObject();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + miscName + "AutoReply" + ".json"), StandardCharsets.UTF_8);
-        JsonObject mainObject = new JsonObject();
-        JsonObject messageObject = new JsonObject();
+		messageObject.add("Message", new JsonPrimitive(AutoReply.getReply()));
+		mainObject.add("AutoReply", messageObject);
+		String jsonString = gson.toJson(new JsonParser().parse(mainObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 
-        messageObject.add("Message", new JsonPrimitive(AutoReply.getReply()));
-        mainObject.add("AutoReply", messageObject);
-        String jsonString = gson.toJson(new JsonParser().parse(mainObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+	public void saveAutoRespawn() throws IOException {
 
-    public void saveAutoRespawn() throws IOException {
+		registerFiles(miscName, "AutoRespawn");
 
-        registerFiles(miscName, "AutoRespawn");
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(
+			new FileOutputStream(fileName + miscName + "AutoRespawn" + ".json"),
+			StandardCharsets.UTF_8);
+		JsonObject mainObject = new JsonObject();
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        OutputStreamWriter fileOutputStreamWriter = new OutputStreamWriter(new FileOutputStream(fileName + miscName + "AutoRespawn" + ".json"), StandardCharsets.UTF_8);
-        JsonObject mainObject = new JsonObject();
-
-        mainObject.add("Message", new JsonPrimitive(AutoRespawn.getAutoRespawnMessages()));
-        String jsonString = gson.toJson(new JsonParser().parse(mainObject.toString()));
-        fileOutputStreamWriter.write(jsonString);
-        fileOutputStreamWriter.close();
-    }
+		mainObject.add("Message", new JsonPrimitive(AutoRespawn.getAutoRespawnMessages()));
+		String jsonString = gson.toJson(new JsonParser().parse(mainObject.toString()));
+		fileOutputStreamWriter.write(jsonString);
+		fileOutputStreamWriter.close();
+	}
 }

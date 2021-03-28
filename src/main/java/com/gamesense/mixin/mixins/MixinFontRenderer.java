@@ -16,9 +16,12 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(FontRenderer.class)
 public class MixinFontRenderer {
 
-    @Redirect(method = "drawStringWithShadow", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/FontRenderer;drawString(Ljava/lang/String;FFIZ)I"))
-    public int drawCustomFontStringWithShadow(FontRenderer fontRenderer, String text, float x, float y, int color, boolean dropShadow) {
-        ColorMain colorMain = ModuleManager.getModule(ColorMain.class);
-        return colorMain.textFont.getValue() ? (int) FontUtil.drawStringWithShadow(true, text, (int) x, (int) y, new GSColor(color)) : fontRenderer.drawString(text, x, y, color, true);
-    }
+	@Redirect(method = "drawStringWithShadow", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/FontRenderer;drawString(Ljava/lang/String;FFIZ)I"))
+	public int drawCustomFontStringWithShadow(FontRenderer fontRenderer, String text, float x,
+		float y, int color, boolean dropShadow) {
+		ColorMain colorMain = ModuleManager.getModule(ColorMain.class);
+		return colorMain.textFont.getValue() ? (int) FontUtil
+			.drawStringWithShadow(true, text, (int) x, (int) y, new GSColor(color))
+			: fontRenderer.drawString(text, x, y, color, true);
+	}
 }
